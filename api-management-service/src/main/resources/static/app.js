@@ -11,6 +11,7 @@
         routes: [],
         organization: null,
         audits: [],
+        traffic: null,
         currentSection: "overview"
     };
 
@@ -38,7 +39,8 @@
             "routeDialogTitle", "routePk", "routeId", "routeName", "routePathPattern", "routeTargetBaseUrl",
             "routeTargetPathPrefix", "routeRequestsPerMinute", "routeResponseTimeout", "routeAllowedMethods",
             "routeIdempotency", "routeActive", "addHeaderRuleButton", "headerRulesContainer", "versionsDialog",
-            "versionsDialogTitle", "versionsTimeline", "toastContainer"
+            "versionsDialogTitle", "versionsTimeline", "toastContainer", "trafficSection", "trafficContent",
+            "refreshTrafficButton"
         ];
 
         ids.forEach(function(id) {
@@ -67,6 +69,7 @@
         elements.addHeaderRuleButton.addEventListener("click", function() { addHeaderRule(); });
         elements.headerRulesContainer.addEventListener("click", removeHeaderRule);
         elements.refreshAuditButton.addEventListener("click", loadAudits);
+        elements.refreshTrafficButton.addEventListener("click", loadTraffic);
 
         document.querySelectorAll(".close-dialog").forEach(function(button) {
             button.addEventListener("click", function() {
@@ -192,6 +195,7 @@
             { id: "overview", label: "Overview" },
             { id: "routes", label: "Routes" },
             { id: "organizationProfile", label: "My organization" },
+            { id: "traffic", label: "Traffic" },
             { id: "audit", label: "Audit records" }
         ];
 
@@ -213,6 +217,7 @@
             organizations: elements.organizationsSection,
             routes: elements.routesSection,
             organizationProfile: elements.organizationProfileSection,
+            traffic: elements.trafficSection,
             audit: elements.auditSection
         };
         var titleMap = {
@@ -220,6 +225,7 @@
             organizations: "Organizations",
             routes: "Routes",
             organizationProfile: "My organization",
+            traffic: "Traffic",
             audit: "Audit records"
         };
 
@@ -247,6 +253,9 @@
             }
             else if(section === "audit") {
                 await loadAudits();
+            }
+            else if(section === "traffic") {
+                await loadTraffic();
             }
         }
         catch(error) {
@@ -768,6 +777,34 @@
         }).join("");
         elements.auditEmpty.classList.toggle("hidden", state.audits.length !== 0);
         elements.auditTableBody.closest(".table-scroll").classList.toggle("hidden", state.audits.length === 0);
+    }
+
+    // The Analytics Service runs next to API Management on port 8082.
+    var ANALYTICS_URL = window.location.protocol + "//" + window.location.hostname + ":8082";
+
+    async function loadTraffic() {
+        elements.trafficContent.innerHTML = loadingBlock("Loading traffic from the Analytics Service...");
+        try {
+            state.traffic = await api(ANALYTICS_URL + "/api/tenant/analytics/summary?hours=24");
+        }
+        catch(error) {
+            elements.trafficContent.innerHTML = '<div class="empty-state"><strong>Analytics unavailable</strong><span>' +
+                escapeHtml("Start the Analytics Service on port 8082 (" + error.message + ")") + '</span></div>';
+            return;
+        }
+        var t = state.traffic;
+        elements.trafficContent.innerHTML =
+            '<div class="stats-grid">' +
+            statCard("Requests", t.requests, "LAST " + t.hours + " HOURS") +
+            statCard("Server errors", t.errors, "STATUS 5XX") +
+            statCard("Avg latency", t.avgLatencyMs + " ms", t.rateLimited + " RATE LIMITED") +
+            '</div>' +
+            (t.routes.length === 0 ? '<div class="empty-state"><strong>No traffic yet</strong><span>Call a route through the gateway on port 8080.</span></div>' :
+            '<div class="table-card"><div class="table-scroll"><table><thead><tr><th>Route</th><th>Requests</th><th>Errors</th><th>Rate limited</th><th>Avg latency</th><th>Max latency</th></tr></thead><tbody>' +
+            t.routes.map(function(route) {
+                return '<tr><td><strong>' + escapeHtml(route.routeId) + '</strong></td><td>' + route.requests + '</td><td>' + route.errors +
+                    '</td><td>' + route.rateLimited + '</td><td>' + Math.round(route.avgLatencyMs) + ' ms</td><td>' + route.maxLatencyMs + ' ms</td></tr>';
+            }).join("") + '</tbody></table></div></div>');
     }
 
     async function api(path, options) {
