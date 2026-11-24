@@ -1,0 +1,49 @@
+package in.coderarmy.gatekeeper.gateway.service;
+
+import in.coderarmy.gatekeeper.gateway.client.ManagementApiClient;
+import in.coderarmy.gatekeeper.gateway.dto.GatewayRoute;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * Loads active routes from API Management at startup, every 30 seconds, and whenever a Kafka event arrives.
+ * If API Management is down, the gateway keeps serving the routes it already has instead of crashing.
+ */
+@Component
+public class GatewayConfigurationLoader implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(GatewayConfigurationLoader.class);
+
+    private final ManagementApiClient managementApiClient;
+    private final RouteRegistry routeRegistry;
+
+    public GatewayConfigurationLoader(ManagementApiClient managementApiClient,
+                                      RouteRegistry routeRegistry) {
+
+        this.managementApiClient = managementApiClient;
+        this.routeRegistry = routeRegistry;
+    }
+
+    @Override
+    public void run(ApplicationArguments arguments) {
+       refresh();
+    }
+
+    @Scheduled(fixedDelayString = "${gateway.refresh-interval-ms:30000}", initialDelayString = "${gateway.refresh-interval-ms:30000}")
+    public synchronized void refresh() {
+        try {
+            List<GatewayRoute> routes = managementApiClient.fetchActiveRoutes();
+            routeRegistry.replaceAll(routes);
+        }
+        catch(RuntimeException exception) {
+            log.warn("Could not refresh routes, keeping the {} routes already loaded: {}",
+                    routeRegistry.size(), String.valueOf(exception));
+        }
+    }
+}
