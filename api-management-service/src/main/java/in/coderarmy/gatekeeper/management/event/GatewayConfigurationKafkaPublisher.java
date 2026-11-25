@@ -18,19 +18,25 @@ public class GatewayConfigurationKafkaPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final String topic;
+    private final boolean enabled;
 
     public GatewayConfigurationKafkaPublisher(KafkaTemplate<String, String> kafkaTemplate,
                                               ObjectMapper objectMapper,
-                                              @Value("${gateway.kafka.configuration-topic}") String topic) {
+                                              @Value("${gateway.kafka.configuration-topic}") String topic,
+                                              @Value("${gateway.kafka.enabled:true}") boolean enabled) {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
         this.topic = topic;
+        this.enabled = enabled;
     }
 
     // After commit (the gateway never hears about a rolled-back change) and async (a down Kafka never slows the API).
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publish(GatewayConfigurationChangeEvent event) {
+        if(!enabled) {
+            return; // without Kafka the gateway still picks up changes by polling
+        }
 
         String key = event.getOrganizationId() + ":" +
                 (event.getRouteId() == null ? "organization" : event.getRouteId());

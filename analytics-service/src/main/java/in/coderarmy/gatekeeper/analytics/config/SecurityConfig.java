@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/health").permitAll()
+                        // Protected by the X-Ingest-Token shared secret instead of a user JWT.
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/internal/access-events").permitAll()
                         .requestMatchers("/api/platform/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/tenant/**").hasRole("TENANT_ADMIN")
                         .anyRequest().denyAll())

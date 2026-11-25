@@ -24,15 +24,22 @@ public class AccessEventConsumer {
 
     @KafkaListener(topics = "${gateway.kafka.access-topic}")
     public void accessEvent(String message) {
+        save(message);
+    }
+
+    /** Shared by the Kafka listener and the HTTP endpoint. @return true if the event was stored */
+    public boolean save(String message) {
         try {
             AccessLog accessLog = objectMapper.readValue(message, AccessLog.class);
             if(accessLog.eventId() == null || accessLog.occurredAt() == null) {
                 throw new IllegalArgumentException("eventId and occurredAt are required");
             }
             repository.save(accessLog);
+            return true;
         }
         catch(RuntimeException exception) {
             log.warn("Skipping invalid access event: {}", exception.getMessage());
+            return false;
         }
     }
 }

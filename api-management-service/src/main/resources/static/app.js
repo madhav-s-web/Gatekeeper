@@ -779,8 +779,9 @@
         elements.auditTableBody.closest(".table-scroll").classList.toggle("hidden", state.audits.length === 0);
     }
 
-    // The Analytics Service runs next to API Management on port 8082.
-    var ANALYTICS_URL = window.location.protocol + "//" + window.location.hostname + ":8082";
+    // Deployed: URL comes from /config.js. Local: the Analytics Service runs on port 8082.
+    var ANALYTICS_URL = window.GATEKEEPER_ANALYTICS_URL ||
+        (window.location.protocol + "//" + window.location.hostname + ":8082");
 
     async function loadTraffic() {
         elements.trafficContent.innerHTML = loadingBlock("Loading traffic from the Analytics Service...");

@@ -29,8 +29,8 @@ public class ManagementApiClient {
                                @Value("${management.api.password}") String password) {
         // Timeouts, so a hung management service can never freeze route refreshes.
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
-                java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build());
-        requestFactory.setReadTimeout(Duration.ofSeconds(5));
+                java.net.http.HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
+        requestFactory.setReadTimeout(Duration.ofSeconds(20)); // long enough for a sleeping (scaled-to-zero) service to wake up
         this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(requestFactory).build();
         this.username = username;
         this.password = password;
