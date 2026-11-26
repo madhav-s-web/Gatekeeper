@@ -38,16 +38,19 @@ public class GatewayService {
             "proxy-authorization", "proxy-connection");
 
     private final RouteRegistry routeRegistry;
+    private final GatewayConfigurationLoader configurationLoader;
     private final ObjectMapper objectMapper;
     private final RateLimitService rateLimitService;
     private final IdempotencyService idempotencyService;
     private final ProxyClient proxyClient;
     private final AccessEventPublisher accessEventPublisher;
 
-    public GatewayService(RouteRegistry routeRegistry, ObjectMapper objectMapper,
+    public GatewayService(RouteRegistry routeRegistry, GatewayConfigurationLoader configurationLoader,
+                          ObjectMapper objectMapper,
                           RateLimitService rateLimitService, IdempotencyService idempotencyService,
                           ProxyClient proxyClient, AccessEventPublisher accessEventPublisher) {
         this.routeRegistry = routeRegistry;
+        this.configurationLoader = configurationLoader;
         this.objectMapper = objectMapper;
         this.rateLimitService = rateLimitService;
         this.idempotencyService = idempotencyService;
@@ -63,6 +66,7 @@ public class GatewayService {
         String outcome;
 
         try {
+            configurationLoader.ensureLoaded();
             Optional<CompiledRoute> matchedRoute = routeRegistry.find(request.getRequestURI());
             if(matchedRoute.isEmpty()) {
                 throw new GatewayPolicyException(HttpStatus.NOT_FOUND,
