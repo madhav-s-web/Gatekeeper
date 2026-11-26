@@ -1,6 +1,22 @@
 # GateKeeper — Multi-tenant API Gateway
 
-Three Spring Boot 4 / Java 21 microservices plus a web dashboard:
+Three Spring Boot 4 / Java 21 microservices plus a web dashboard.
+
+## 🌐 Live demo (deployed on Vercel)
+
+| | Link |
+|---|---|
+| **Dashboard** (control plane) | https://gatekeeper-api-management-service.vercel.app |
+| **Gateway** — a live route, proxied to httpbin.org | https://gatekeeper-smart-gateway-service.vercel.app/foodfast/orders/42 |
+| Gateway health | https://gatekeeper-smart-gateway-service.vercel.app/health |
+| Analytics health | https://gatekeeper-analytics-service.vercel.app/health |
+
+Open the gateway link and you'll get httpbin's echo of the forwarded request: the gateway matched
+`/foodfast/orders/**`, rewrote the path to `/anything/42`, added an `X-Gateway: gatekeeper` header and recorded
+the call for the dashboard's **Traffic** page. Dashboard logins are private; demo access on request.
+Services sleep when idle, so the first request can take ~15 s. How it's deployed: [DEPLOY.md](DEPLOY.md).
+
+## Architecture
 
 ```
  Admin (browser) ──► API Management Service :8081 ──► MySQL
